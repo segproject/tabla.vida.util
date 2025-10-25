@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Tabla de Vida Útil + Examen</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f7fa;
+      color: #333;
+      touch-action: manipulation;
+    }
+    .tabs {
+      display: flex;
+      background: #2c3e50;
+      color: white;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab {
+      padding: 16px 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+      min-width: 180px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .tab:hover {
+      background: #34495e;
+    }
+    .tab.active {
+      background: #3498db;
+    }
+    .tab-content {
+      display: none;
+      padding: 16px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* --- Tabla principal --- */
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      font-size: 1.4em;
+      margin-top: 0;
+    }
+    .nota-actualizacion {
+      text-align: center;
+      font-size: 0.85em;
+      color: #666;
+      margin-bottom: 15px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: flex-end;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 150px;
+    }
+    label {
+      font-size: 0.85em;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    input, select {
+      padding: 12px;
+      font-size: 16px; /* Evita zoom en iOS */
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      min-height: 44px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #2c3e50;
+      color: white;
+      font-size: 0.9em;
+    }
+
+    /* Colores por categoría */
+    .fila-carnicos { background-color: #ffebee; }
+    .fila-quesos { background-color: #f3e5f5; }
+    .fila-frutas { background-color: #e8f5e9; }
+    .fila-salsas { background-color: #fff3e0; }
+    .fila-otros { background-color: #e3f2fd; }
+    .fila-preps { background-color: #f1f8e9; }
+    tr:hover {
+      filter: brightness(0.97);
+    }
+
+    /* Ocultar columnas */
+    .col-recibido, .col-preparado, .col-linea {
+      display: table-cell;
+    }
+    .hide-recibido .col-recibido,
+    .hide-preparado .col-preparado,
+    .hide-linea .col-linea {
+      display: none !important;
+    }
+
+    /* --- Examen manual --- */
+    #seleccionProductos {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 12px;
+      background: white;
+      margin: 12px 0;
+      border-radius: 6px;
+    }
+    .producto-item {
+      margin: 8px 0;
+    }
+    .producto-item label {
+      font-size: 1em;
+      cursor: pointer;
+      padding: 10px;
+      display: block;
+      border-radius: 4px;
+    }
+    .producto-item input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      margin-right: 12px;
+      vertical-align: middle;
+    }
+    #tablaExamenManual input {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+      min-height: 48px;
+      margin-bottom: 8px;
+    }
+    .emoji {
+      font-weight: bold;
+      font-size: 1.4em;
+      display: inline-block;
+      min-width: 28px;
+      text-align: center;
+      margin-left: 6px;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid #ddd;
+      font-size: 0.95em;
+    }
+    .btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+      justify-content: center;
+      margin: 8px 0;
+      width: 100%;
+      max-width: 300px;
+      box-sizing: border-box;
+    }
+    .btn:hover {
+      background: #2980b9;
+    }
+    #nuevoExamenBtn {
+      background: #9c27b0 !important;
+    }
+    .correccion {
+      margin: 10px 0;
+      padding: 12px;
+      background: #fff;
+      border-left: 4px solid #ff9800;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+    .correccion.correcta {
+      border-left-color: #4caf50;
+    }
+    .correccion.incorrecta {
+      border-left-color: #f44336;
+    }
+
+    /* --- Responsive móvil --- */
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+      }
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      td {
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+        padding-top: 14px;
+        padding-bottom: 14px;
+      }
+      td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 12px;
+        width: 45%;
+        padding-right: 10px;
+        font-weight: bold;
+        text-align: left;
+        font-size: 0.95em;
+      }
+      #tablaExamenManual thead {
+        display: none;
+      }
+      #tablaExamenManual tr {
+        display: block;
+        margin-bottom: 24px;
+        padding: 16px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        background: #fafafa;
+      }
+      #tablaExamenManual td {
+        display: flex;
+        flex-direction: column;
+        padding: 0 !important;
+        text-align: left;
+      }
+      #tablaExamenManual td::before {
+        display: none;
+      }
+      #tablaExamenManual td:first-child {
+        font-weight: bold;
+        margin-bottom: 12px;
+        font-size: 1.1em;
+      }
+      #tablaExamenManual td:not(:first-child) {
+        margin-bottom: 16px;
+      }
+      #tablaExamenManual label {
+        font-weight: bold;
+        margin-bottom: 6px;
+        font-size: 0.95em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Pestañas -->
+<div class="tabs">
+  <div class="tab active" data-tab="tabla">📊 Tabla de Vida Útil</div>
+  <div class="tab" data-tab="examen">📝 Examen: Selecciona y Rellena</div>
+</div>
+
+<!-- Tabla principal -->
+<div id="tabla" class="tab-content active">
+  <h1>Tabla de Vida Útil de Insumos</h1>
+  <p class="nota-actualizacion">Última actualización: <strong>12 de agosto de 2025</strong></p>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="buscador">Buscar producto</label>
+      <input type="text" id="buscador" placeholder="Ej: jalapeños..." />
+    </div>
+    <div class="control-group">
+      <label for="categoriaFiltro">Categoría</label>
+      <select id="categoriaFiltro">
+        <option value="">Todas</option>
+        <option value="CÁRNICOS">Cárnicos</option>
+        <option value="QUESOS">Quesos</option>
+        <option value="FRUTAS Y VEGETALES">Frutas y Vegetales</option>
+        <option value="SALSAS">Salsas</option>
+        <option value="OTROS INSUMOS">Otros Insumos</option>
+        <option value="PREPS">Preps</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="lineaFiltro">Vida útil en línea</label>
+      <select id="lineaFiltro">
+        <option value="">Cualquiera</option>
+        <option value="11:59 p. m.">Hasta cierre (11:59 p.m.)</option>
+        <option value="6 horas">6 horas</option>
+        <option value="10 horas">10 horas</option>
+        <option value="1">1 día</option>
+        <option value="2">2 días</option>
+        <option value="3">3 días</option>
+        <option value="5">5 días</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="etapaFiltro">Ver etapa</label>
+      <select id="etapaFiltro">
+        <option value="todas">Todas las etapas</option>
+        <option value="recibido">Recibido</option>
+        <option value="preparado">Preparado</option>
+        <option value="linea">Línea</option>
+      </select>
+    </div>
+  </div>
+
+  <table id="tablaVidaUtil">
+    <thead>
+      <tr>
+        <th>Categoría</th>
+        <th>Producto</th>
+        <th class="col-recibido">Recibido</th>
+        <th class="col-preparado">Preparado</th>
+        <th class="col-linea">Línea</th>
+      </tr>
+    </thead>
+    <tbody id="tablaCuerpo"></tbody>
+  </table>
+</div>
+
+<!-- Examen personalizado -->
+<div id="examen" class="tab-content">
+  <h1>📝 Examen: Selecciona Productos y Rellena</h1>
+  <p>Marca los productos que deseas incluir en el examen:</p>
+
+  <div id="seleccionProductos"></div>
+
+  <button class="btn" id="generarExamenManual">Generar Tabla para Rellenar</button>
+
+  <form id="formularioExamenManual" style="display:none;">
+    <div style="overflow-x:auto;">
+      <table id="tablaExamenManual">
+        <thead>
+          <tr>
+            <th>Producto (Categoría)</th>
+            <th>Recibido</th>
+            <th>Preparado</th>
+            <th>Línea</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoExamenManual"></tbody>
+      </table>
+    </div>
+    <br>
+    <button type="button" class="btn" id="calificarExamenManual">
+      ✅ Calificar con Emojis
+    </button>
+    <button type="button" class="btn" id="nuevoExamenBtn" style="display:none;">
+      🔄 Nuevo Examen
+    </button>
+  </form>
+
+  <div id="resultadoExamenManual" class="result" style="display:none;"></div>
+</div>
+
+<script>
+  // === DATOS EXACTOS DEL EXCEL ===
+  const datos = [
+    {cat: "CÁRNICOS", prod: "Alitas de pollo - local", recibido: "7", preparado: "7", linea: "1"},
+    {cat: "CÁRNICOS", prod: "Poppers de pollo", recibido: "7", preparado: "7", linea: "1"},
+    {cat: "CÁRNICOS", prod: "Pollo asado - importado", recibido: "10", preparado: "7", linea: "1"},
+    {cat: "CÁRNICOS", prod: "Salchicha italiana", recibido: "12", preparado: "7", linea: "1"},
+    {cat: "CÁRNICOS", prod: "Chorizo - local", recibido: "7", preparado: "4", linea: "1"},
+    {cat: "CÁRNICOS", prod: "Chorizo Parrillero", recibido: "Según empaque", preparado: "6", linea: "1"},
+    {cat: "CÁRNICOS", prod: "Carne de res - local", recibido: "12", preparado: "7", linea: "2"},
+    {cat: "CÁRNICOS", prod: "Salchicha de cerdo", recibido: "12", preparado: "7", linea: "2"},
+    {cat: "CÁRNICOS", prod: "Tocino", recibido: "30", preparado: "7", linea: "2"},
+    {cat: "CÁRNICOS", prod: "Pepperoni de cerdo", recibido: "30", preparado: "7", linea: "2"},
+    {cat: "CÁRNICOS", prod: "Jamón - local", recibido: "14", preparado: "7", linea: "2"},
+    
+    {cat: "QUESOS", prod: "Queso Mozzarella", recibido: "14", preparado: "7", linea: "1"},
+    {cat: "QUESOS", prod: "Queso en tiras", recibido: "14", preparado: "7", linea: "1"},
+    {cat: "QUESOS", prod: "Mezcla de 3 quesos (Asiago, Fontina, Provolone)", recibido: "7", preparado: "7", linea: "1"},
+    {cat: "QUESOS", prod: "Mezcla de 2 quesos (Romano y Parmesano)", recibido: "7", preparado: "7", linea: "1"},
+    
+    {cat: "FRUTAS Y VEGETALES", prod: "Champiñón", recibido: "Según empaque", preparado: "1", linea: "11:59 p. m."},
+    {cat: "FRUTAS Y VEGETALES", prod: "Cebolla blanca/roja", recibido: "Según empaque", preparado: "2", linea: "11:59 p. m."},
+    {cat: "FRUTAS Y VEGETALES", prod: "Pimiento rojo", recibido: "Según empaque", preparado: "2", linea: "11:59 p. m."},
+    {cat: "FRUTAS Y VEGETALES", prod: "Pimiento verde", recibido: "Según empaque", preparado: "2", linea: "11:59 p. m."},
+    {cat: "FRUTAS Y VEGETALES", prod: "Tomate", recibido: "Según empaque", preparado: "2", linea: "11:59 p. m."},
+    {cat: "FRUTAS Y VEGETALES", prod: "Jalapeños", recibido: "Según empaque", preparado: "60", linea: "11:59 p. m."},
+    {cat: "FRUTAS Y VEGETALES", prod: "Aceituna negra", recibido: "Según empaque", preparado: "7", linea: "2"},
+    {cat: "FRUTAS Y VEGETALES", prod: "Aceituna verde", recibido: "Según empaque", preparado: "7", linea: "2"},
+    {cat: "FRUTAS Y VEGETALES", prod: "Piña - lata", recibido: "Según empaque", preparado: "15", linea: "2"},
+    {cat: "FRUTAS Y VEGETALES", prod: "Pepperoncini", recibido: "Según empaque", preparado: "15", linea: "11:59 p. m."},
+    
+    {cat: "SALSAS", prod: "Salsa pizza - lata", recibido: "Según empaque", preparado: "10 horas", linea: "10 horas"},
+    {cat: "SALSAS", prod: "Salsa de mayonesa con ají limo", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa rosada (1kg)", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa rosada (0.5 kg)", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa Parrillera", recibido: "Según empaque", preparado: "3", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa de ajo (botella - granel)", recibido: "Según empaque", preparado: "21", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa de mango habanero (bolsa)", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa Ranch", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa Bechamel", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa Chimichurri", recibido: "Según empaque", preparado: "15", linea: "2"},
+    {cat: "SALSAS", prod: "Salsa de ajo (blister - cup)", recibido: "Según empaque", preparado: "Según empaque", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa Parmesana (botella - granel)", recibido: "Según empaque", preparado: "21", linea: "11:59 p. m."},
+    {cat: "SALSAS", prod: "Salsa BBQ (blister - cup)", recibido: "Según empaque", preparado: "Según empaque", linea: "Según empaque"},
+    {cat: "SALSAS", prod: "Salsa BBQ (bolsa)", recibido: "Según empaque", preparado: "4", linea: "2"},
+    {cat: "SALSAS", prod: "Salsa Buffalo (blister - cup)", recibido: "Según empaque", preparado: "Según empaque", linea: "Según empaque"},
+    {cat: "SALSAS", prod: "Salsa de Miel Picante", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    
+    {cat: "OTROS INSUMOS", prod: "Dustinator", recibido: "Según empaque", preparado: "14", linea: "2"},
+    {cat: "OTROS INSUMOS", prod: "Masa Croisant", recibido: "5", preparado: "", linea: "11:59 p. m."},
+    {cat: "OTROS INSUMOS", prod: "Masa delgada - importada", recibido: "30", preparado: "3", linea: ""},
+    {cat: "OTROS INSUMOS", prod: "Azúcar glaseada (Icing) - local", recibido: "Según empaque", preparado: "30", linea: "2"},
+    {cat: "OTROS INSUMOS", prod: "Cinamon Spreed", recibido: "Según empaque", preparado: "30", linea: "2"},
+    {cat: "OTROS INSUMOS", prod: "Orégano - sachet", recibido: "Según empaque", preparado: "Según empaque", linea: "Según empaque"},
+    {cat: "OTROS INSUMOS", prod: "Aji panca - sachet", recibido: "Según empaque", preparado: "Según empaque", linea: "Según empaque"},
+    {cat: "OTROS INSUMOS", prod: "Orégano - granel", recibido: "Según empaque", preparado: "Según empaque", linea: "Según empaque"},
+    {cat: "OTROS INSUMOS", prod: "Aji panca - granel", recibido: "Según empaque", preparado: "Según empaque", linea: "Según empaque"},
+    {cat: "OTROS INSUMOS", prod: "Sazonador italiano", recibido: "Según empaque", preparado: "7", linea: "3"},
+    {cat: "OTROS INSUMOS", prod: "Pasta de lasagna", recibido: "10", preparado: "8", linea: ""},
+    {cat: "OTROS INSUMOS", prod: "Tortilla", recibido: "Según empaque", preparado: "7", linea: "11:59 p. m."},
+    {cat: "OTROS INSUMOS", prod: "Manjar Blanco", recibido: "Según empaque", preparado: "15", linea: "5"},
+    {cat: "OTROS INSUMOS", prod: "Azúcar Impalpable", recibido: "Según empaque", preparado: "30", linea: "5"},
+    
+    {cat: "PREPS", prod: "Lasagna (All the meats/The Works/Americana)", recibido: "", preparado: "4", linea: ""},
+    {cat: "PREPS", prod: "Rollitos de Pepperoni/Jamón", recibido: "", preparado: "6 horas", linea: "6 horas"},
+    {cat: "PREPS", prod: "Rollitos de Manjar", recibido: "", preparado: "6 horas", linea: "6 horas"},
+    {cat: "PREPS", prod: "Rollitos de Canela", recibido: "", preparado: "6 horas", linea: "6 horas"}
+  ];
+
+  // === PESTAÑAS ===
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // === TABLA PRINCIPAL ===
+  const clasePorCategoria = {
+    "CÁRNICOS": "fila-carnicos",
+    "QUESOS": "fila-quesos",
+    "FRUTAS Y VEGETALES": "fila-frutas",
+    "SALSAS": "fila-salsas",
+    "OTROS INSUMOS": "fila-otros",
+    "PREPS": "fila-preps"
+  };
+
+  function renderTabla(data) {
+    const cuerpo = document.getElementById("tablaCuerpo");
+    cuerpo.innerHTML = "";
+    if (data.length === 0) {
+      cuerpo.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#888;">No se encontraron resultados.</td></tr>`;
+      return;
+    }
+    data.forEach(item => {
+      const clase = clasePorCategoria[item.cat] || "";
+      const fila = document.createElement("tr");
+      fila.className = clase;
+      fila.innerHTML = `
+        <td data-label="Categoría">${item.cat}</td>
+        <td data-label="Producto">${item.prod}</td>
+        <td class="col-recibido" data-label="Recibido">${item.recibido || "–"}</td>
+        <td class="col-preparado" data-label="Preparado">${item.preparado || "–"}</td>
+        <td class="col-linea" data-label="Línea">${item.linea || "–"}</td>
+      `;
+      cuerpo.appendChild(fila);
+    });
+  }
+
+  function aplicarFiltroColumnas(etapa) {
+    const tabla = document.getElementById("tablaVidaUtil");
+    tabla.classList.remove("hide-recibido", "hide-preparado", "hide-linea");
+    if (etapa === "recibido") tabla.classList.add("hide-preparado", "hide-linea");
+    else if (etapa === "preparado") tabla.classList.add("hide-recibido", "hide-linea");
+    else if (etapa === "linea") tabla.classList.add("hide-recibido", "hide-preparado");
+  }
+
+  function filtrarTabla() {
+    const texto = document.getElementById("buscador").value.toLowerCase();
+    const cat = document.getElementById("categoriaFiltro").value;
+    const lin = document.getElementById("lineaFiltro").value;
+
+    const filtrados = datos.filter(item => {
+      const coincideBusqueda = !texto || item.prod.toLowerCase().includes(texto);
+      const coincideCat = !cat || item.cat === cat;
+      const coincideLin = !lin || item.linea === lin;
+      return coincideBusqueda && coincideCat && coincideLin;
+    });
+
+    renderTabla(filtrados);
+    aplicarFiltroColumnas(document.getElementById("etapaFiltro").value);
+  }
+
+  ["buscador", "categoriaFiltro", "lineaFiltro", "etapaFiltro"].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", filtrarTabla);
+    el.addEventListener("change", filtrarTabla);
+  });
+
+  renderTabla(datos);
+  aplicarFiltroColumnas("todas");
+
+  // === EXAMEN MANUAL CON SELECCIÓN ===
+  function cargarListaSeleccion() {
+    const cont = document.getElementById("seleccionProductos");
+    cont.innerHTML = "";
+    datos.forEach((item, i) => {
+      const div = document.createElement("div");
+      div.className = "producto-item";
+      div.innerHTML = `
+        <label>
+          <input type="checkbox" data-index="${i}"> 
+          ${item.prod} <small>(${item.cat})</small>
+        </label>
+      `;
+      cont.appendChild(div);
+    });
+  }
+
+  function reiniciarExamen() {
+    document.getElementById("formularioExamenManual").style.display = "none";
+    document.getElementById("resultadoExamenManual").style.display = "none";
+    document.querySelectorAll("#seleccionProductos input[type='checkbox']").forEach(chk => {
+      chk.checked = false;
+    });
+    setTimeout(cargarListaSeleccion, 100);
+    document.getElementById("nuevoExamenBtn").style.display = "none";
+  }
+
+  document.getElementById("nuevoExamenBtn").addEventListener("click", reiniciarExamen);
+
+  document.getElementById("generarExamenManual").addEventListener("click", () => {
+    const checks = document.querySelectorAll("#seleccionProductos input[type='checkbox']:checked");
+    if (checks.length === 0) {
+      alert("Por favor, selecciona al menos un producto.");
+      return;
+    }
+
+    const seleccionados = Array.from(checks).map(chk => datos[parseInt(chk.dataset.index)]);
+
+    let html = "";
+    seleccionados.forEach((item, i) => {
+      html += `
+        <tr>
+          <td><strong>${item.prod}</strong><br><small>${item.cat}</small></td>
+          <td>
+            <input type="text" name="recibido_${i}" data-real="${item.recibido}" placeholder="Ej: 7">
+            <span class="emoji" id="emoji_r_${i}"></span>
+          </td>
+          <td>
+            <input type="text" name="preparado_${i}" data-real="${item.preparado}" placeholder="Ej: 7">
+            <span class="emoji" id="emoji_p_${i}"></span>
+          </td>
+          <td>
+            <input type="text" name="linea_${i}" data-real="${item.linea}" placeholder="Ej: 1 o 11:59 p. m.">
+            <span class="emoji" id="emoji_l_${i}"></span>
+          </td>
+        </tr>
+      `;
+    });
+
+    document.getElementById("cuerpoExamenManual").innerHTML = html;
+    document.getElementById("formularioExamenManual").style.display = "block";
+    document.getElementById("resultadoExamenManual").style.display = "none";
+    document.getElementById("nuevoExamenBtn").style.display = "block";
+  });
+
+  document.getElementById("calificarExamenManual").addEventListener("click", () => {
+    const inputs = document.querySelectorAll("#cuerpoExamenManual input");
+    let total = 0;
+    let correctos = 0;
+    let errores = [];
+
+    inputs.forEach(input => {
+      const user = input.value.trim();
+      const real = input.dataset.real || "";
+      total++;
+
+      const esCorrecto = (user === "" && real === "") || 
+                         (user.toLowerCase() === real.toLowerCase());
+
+      const emojiSpan = input.nextElementSibling;
+
+      if (esCorrecto) {
+        correctos++;
+        emojiSpan.textContent = "✅";
+        emojiSpan.className = "emoji correcto";
+      } else {
+        emojiSpan.textContent = "❌";
+        emojiSpan.className = "emoji incorrecto";
+        const row = input.closest("tr");
+        const producto = row.querySelector("strong").textContent;
+        const cat = row.querySelector("small").textContent;
+        const colIndex = input.closest("td").cellIndex;
+        const colName = colIndex === 1 ? "Recibido" : colIndex === 2 ? "Preparado" : "Línea";
+        errores.push({ producto, cat, colName, user, real });
+      }
+    });
+
+    const resDiv = document.getElementById("resultadoExamenManual");
+    let msg = `<h3>Resultado del examen</h3>`;
+    msg += `<p><strong>${correctos}</strong> de <strong>${total}</strong> celdas correctas.</p>`;
+
+    if (errores.length > 0) {
+      msg += `<h4>Correcciones detalladas:</h4>`;
+      errores.forEach(e => {
+        msg += `<div class="correccion incorrecta">
+          <strong>${e.producto}</strong> (${e.cat}) - ${e.colName}: 
+          <span style="color:#888">Respondiste: "${e.user || '(vacío)'}"</span> → 
+          <span style="color:#f44336">Correcto: "${e.real || '(vacío)'}"</span>
+        </div>`;
+      });
+    } else {
+      msg += `<div class="correccion correcta">
+        ¡Excelente! Todas tus respuestas son correctas.
+      </div>`;
+    }
+
+    resDiv.innerHTML = msg;
+    resDiv.style.display = "block";
+  });
+
+  document.querySelector('.tab[data-tab="examen"]').addEventListener('click', () => {
+    setTimeout(cargarListaSeleccion, 100);
+  });
+  if (document.getElementById("examen").classList.contains("active")) {
+    cargarListaSeleccion();
+  }
+</script>
+
+</body>
+</html>
