@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Tabla de Vida Útil + Examen</title>
+  <title>Tabla de Vida Útil Dinámica</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -278,7 +278,7 @@
 
 <div class="tabs">
   <div class="tab active" data-tab="tabla">📊 Tabla de Vida Útil</div>
-  <div class="tab" data-tab="examen">📝 Examen: Selecciona y Rellena</div>
+  <div class="tab" data-tab="examen">📝 Evaluacíon</div>
 </div>
 
 <div id="tabla" class="tab-content active">
@@ -523,11 +523,22 @@
     return [...numericos.map(String), ...horas, ...texto];
   }
 
+  // === FUNCIÓN ACTUALIZADA: respeta categoría y búsqueda ===
   function construirFiltroEtapa(campo) {
     const select = document.getElementById("filtroEtapaValor");
     select.innerHTML = '<option value="">Todos los valores</option>';
+
+    const texto = document.getElementById("buscador").value.toLowerCase().trim();
+    const cat = document.getElementById("categoriaFiltro").value;
+
+    const filtrados = datos.filter(item => {
+      const coincideBusqueda = !texto || item.prod.toLowerCase().includes(texto);
+      const coincideCat = !cat || item.cat === cat;
+      return coincideBusqueda && coincideCat;
+    });
+
     const valores = new Set();
-    datos.forEach(item => {
+    filtrados.forEach(item => {
       const val = item[campo] || "";
       if (val !== "") valores.add(val);
     });
@@ -559,9 +570,21 @@
     renderTabla(filtrados);
   }
 
-  // Eventos
-  document.getElementById("buscador").addEventListener("input", filtrarTabla);
-  document.getElementById("categoriaFiltro").addEventListener("change", filtrarTabla);
+  // === EVENTOS ACTUALIZADOS ===
+  document.getElementById("buscador").addEventListener("input", () => {
+    filtrarTabla();
+    if (etapaActiva !== "todas") {
+      construirFiltroEtapa(etapaActiva);
+    }
+  });
+
+  document.getElementById("categoriaFiltro").addEventListener("change", () => {
+    filtrarTabla();
+    if (etapaActiva !== "todas") {
+      construirFiltroEtapa(etapaActiva);
+    }
+  });
+
   document.getElementById("filtroEtapaValor").addEventListener("change", filtrarTabla);
 
   function crearHandlerVista(vista) {
@@ -581,7 +604,7 @@
   renderTabla(datos);
   document.getElementById("btnTodas").click();
 
-  // === EXAMEN (igual que antes) ===
+  // === EXAMEN ===
   function cargarListaSeleccion() {
     const cont = document.getElementById("seleccionProductos");
     cont.innerHTML = "";
@@ -632,6 +655,55 @@
     document.getElementById("nuevoExamenBtn").style.display = "block";
   });
 
+  // --- FUNCIONES DE NORMALIZACIÓN Y COMPARACIÓN CORREGIDAS ---
+
+  function normalizarTexto(texto) {
+    if (!texto) return "";
+    return texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function normalizarHora(texto) {
+    if (!texto) return "";
+    let t = texto.toLowerCase().trim();
+    t = t
+      .replace(/\s*\.\s*/g, "")   // elimina puntos con espacios: "p. m." → "pm"
+      .replace(/\s+/g, "")        // elimina todos los espacios: "11:59 pm" → "11:59pm"
+      .trim();
+    return t;
+  }
+
+  function respuestasEquivalentes(user, real) {
+    if (user === "" && real === "") return true;
+    if (user === "" || real === "") return false;
+
+    const userNorm = normalizarTexto(user);
+    const realNorm = normalizarTexto(real);
+
+    // Caso especial: si la respuesta correcta es una variante de "11:59 p. m."
+    if (real.includes("11:59") && 
+        (real.toLowerCase().includes("p.") || 
+         real.toLowerCase().includes("pm") || 
+         real.toLowerCase().includes("p m"))) {
+
+      const userHora = normalizarHora(user);
+      const realHora = normalizarHora(real);
+      return userHora === realHora;
+    }
+
+    // Caso especial: "segun empaque"
+    if (realNorm === "segun empaque") {
+      return userNorm === "segun empaque";
+    }
+
+    // Comparación normalizada estándar
+    return userNorm === realNorm;
+  }
+
   document.getElementById("calificarExamenManual").addEventListener("click", () => {
     const inputs = document.querySelectorAll("#cuerpoExamenManual input");
     let total = 0, correctos = 0, errores = [];
@@ -639,7 +711,7 @@
       const user = input.value.trim();
       const real = input.dataset.real || "";
       total++;
-      const esCorrecto = (user === "" && real === "") || (user.toLowerCase() === real.toLowerCase());
+      const esCorrecto = respuestasEquivalentes(user, real);
       const emojiSpan = input.nextElementSibling;
       if (esCorrecto) {
         correctos++;
