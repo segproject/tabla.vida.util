@@ -211,6 +211,12 @@
       max-width: 300px;
       box-sizing: border-box;
     }
+    .btn-secondary {
+      background: #7f8c8d;
+      font-size: 14px;
+      min-height: 40px;
+      padding: 8px 12px;
+    }
     #nuevoExamenBtn {
       background: #9c27b0 !important;
     }
@@ -227,6 +233,18 @@
     }
     .correccion.incorrecta {
       border-left-color: #f44336;
+    }
+
+    /* Estilos nuevos para controles de selección */
+    .eval-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      margin-bottom: 10px;
     }
 
     @media (max-width: 768px) {
@@ -278,7 +296,7 @@
 
 <div class="tabs">
   <div class="tab active" data-tab="tabla">📊 Tabla de Vida Útil</div>
-  <div class="tab" data-tab="examen">📝 Evaluacíon</div>
+  <div class="tab" data-tab="examen">📝 Evaluación</div>
 </div>
 
 <div id="tabla" class="tab-content active">
@@ -332,9 +350,28 @@
 
 <div id="examen" class="tab-content">
   <h1>📝 Examen: Selecciona Productos y Rellena</h1>
-  <p>Marca los productos que deseas incluir en el examen:</p>
+  
+  <div class="eval-controls">
+    <div style="flex: 1; min-width: 200px;">
+        <label>Selección rápida:</label>
+        <div style="display: flex; gap: 5px;">
+            <button class="btn btn-secondary" id="btnSeleccionarTodo" style="margin:0">Seleccionar Todos ✅</button>
+            <button class="btn btn-secondary" id="btnDeseleccionarTodo" style="margin:0; background:#e74c3c">Limpiar selección 🧹</button>
+        </div>
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+        <label for="numAleatorios">Elegir cantidad al azar:</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="number" id="numAleatorios" placeholder="#" style="width: 70px;">
+            <button class="btn btn-secondary" id="btnAzar" style="margin:0; background:#f39c12">Elegir al Azar 🎲</button>
+        </div>
+    </div>
+  </div>
+
+  <p>O marca manualmente los productos en la lista:</p>
   <div id="seleccionProductos"></div>
-  <button class="btn" id="generarExamenManual">Generar Evaluación</button>
+  
+  <button class="btn" id="generarExamenManual">🚀 Comenzar Evaluación</button>
 
   <form id="formularioExamenManual" style="display:none;">
     <div style="overflow-x:auto;">
@@ -352,14 +389,13 @@
     </div>
     <br>
     <button type="button" class="btn" id="calificarExamenManual">✅ Calificar</button>
-    <button type="button" class="btn" id="nuevoExamenBtn" style="display:none;">🔄 Nuevo Examen</button>
+    <button type="button" class="btn" id="nuevoExamenBtn" style="display:none;">🔄 Cambiar Productos</button>
   </form>
 
   <div id="resultadoExamenManual" class="result" style="display:none;"></div>
 </div>
 
 <script>
-  // === DATOS EXACTOS DEL EXCEL, NORMALIZADOS ===
   const datosRaw = [
     {cat: "CÁRNICOS", prod: "Alitas de pollo - local", recibido: "7", preparado: "7", linea: "1"},
     {cat: "CÁRNICOS", prod: "Poppers de pollo", recibido: "7", preparado: "7", linea: "1"},
@@ -427,7 +463,6 @@
     {cat: "PREPS", prod: "Rollitos de Canela", recibido: "", preparado: "6 horas", linea: "6 horas"}
   ];
 
-  // Normalizar datos: eliminar espacios extra
   const datos = datosRaw.map(item => ({
     cat: item.cat.trim(),
     prod: item.prod.trim(),
@@ -436,7 +471,7 @@
     linea: item.linea ? item.linea.trim() : ""
   }));
 
-  // === Resto del código igual, pero con eventos corregidos ===
+  // Navegación Pestañas
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -447,12 +482,8 @@
   });
 
   const clasePorCategoria = {
-    "CÁRNICOS": "fila-carnicos",
-    "QUESOS": "fila-quesos",
-    "FRUTAS Y VEGETALES": "fila-frutas",
-    "SALSAS": "fila-salsas",
-    "OTROS INSUMOS": "fila-otros",
-    "PREPS": "fila-preps"
+    "CÁRNICOS": "fila-carnicos", "QUESOS": "fila-quesos", "FRUTAS Y VEGETALES": "fila-frutas",
+    "SALSAS": "fila-salsas", "OTROS INSUMOS": "fila-otros", "PREPS": "fila-preps"
   };
 
   let etapaActiva = "todas";
@@ -465,9 +496,8 @@
       return;
     }
     data.forEach(item => {
-      const clase = clasePorCategoria[item.cat] || "";
       const fila = document.createElement("tr");
-      fila.className = clase;
+      fila.className = clasePorCategoria[item.cat] || "";
       fila.innerHTML = `
         <td data-label="Categoría">${item.cat}</td>
         <td data-label="Producto">${item.prod}</td>
@@ -485,69 +515,35 @@
     tabla.classList.remove("hide-recibido", "hide-preparado", "hide-linea");
     const container = document.getElementById("filtroEtapaContainer");
     
-    if (vista === "todas") {
-      container.style.display = "none";
-    } else {
-      container.style.display = "flex";
-      construirFiltroEtapa(vista);
-    }
+    if (vista === "todas") { container.style.display = "none"; } 
+    else { container.style.display = "flex"; construirFiltroEtapa(vista); }
 
-    if (vista === "recibido") {
-      tabla.classList.add("hide-preparado", "hide-linea");
-    } else if (vista === "preparado") {
-      tabla.classList.add("hide-recibido", "hide-linea");
-    } else if (vista === "linea") {
-      tabla.classList.add("hide-recibido", "hide-preparado");
-    }
+    if (vista === "recibido") tabla.classList.add("hide-preparado", "hide-linea");
+    else if (vista === "preparado") tabla.classList.add("hide-recibido", "hide-linea");
+    else if (vista === "linea") tabla.classList.add("hide-recibido", "hide-preparado");
   }
 
   function ordenarValores(valores) {
-    const numericos = [];
-    const horas = [];
-    const texto = [];
-
+    const numericos = [], horas = [], texto = [];
     valores.forEach(val => {
-      if (/^\d+$/.test(val)) {
-        numericos.push(parseInt(val));
-      } else if (val.includes("hora")) {
-        horas.push(val);
-      } else {
-        texto.push(val);
-      }
+      if (/^\d+$/.test(val)) numericos.push(parseInt(val));
+      else if (val.includes("hora")) horas.push(val);
+      else texto.push(val);
     });
-
-    numericos.sort((a, b) => a - b);
-    horas.sort();
-    texto.sort();
-
+    numericos.sort((a, b) => a - b); horas.sort(); texto.sort();
     return [...numericos.map(String), ...horas, ...texto];
   }
 
-  // === FUNCIÓN ACTUALIZADA: respeta categoría y búsqueda ===
   function construirFiltroEtapa(campo) {
     const select = document.getElementById("filtroEtapaValor");
     select.innerHTML = '<option value="">Todos los valores</option>';
-
     const texto = document.getElementById("buscador").value.toLowerCase().trim();
     const cat = document.getElementById("categoriaFiltro").value;
-
-    const filtrados = datos.filter(item => {
-      const coincideBusqueda = !texto || item.prod.toLowerCase().includes(texto);
-      const coincideCat = !cat || item.cat === cat;
-      return coincideBusqueda && coincideCat;
-    });
-
+    const filtrados = datos.filter(item => (!texto || item.prod.toLowerCase().includes(texto)) && (!cat || item.cat === cat));
     const valores = new Set();
-    filtrados.forEach(item => {
-      const val = item[campo] || "";
-      if (val !== "") valores.add(val);
-    });
-
-    const valoresOrdenados = ordenarValores(Array.from(valores));
-    valoresOrdenados.forEach(val => {
-      const opt = document.createElement("option");
-      opt.value = val;
-      opt.textContent = val;
+    filtrados.forEach(item => { if (item[campo]) valores.add(item[campo]); });
+    ordenarValores(Array.from(valores)).forEach(val => {
+      const opt = document.createElement("option"); opt.value = val; opt.textContent = val;
       select.appendChild(opt);
     });
   }
@@ -556,198 +552,153 @@
     const texto = document.getElementById("buscador").value.toLowerCase().trim();
     const cat = document.getElementById("categoriaFiltro").value;
     const valorEtapa = document.getElementById("filtroEtapaValor").value;
-
     const filtrados = datos.filter(item => {
       const coincideBusqueda = !texto || item.prod.toLowerCase().includes(texto);
       const coincideCat = !cat || item.cat === cat;
       let coincideEtapa = true;
-      if (etapaActiva !== "todas" && valorEtapa) {
-        coincideEtapa = (item[etapaActiva] || "") === valorEtapa;
-      }
+      if (etapaActiva !== "todas" && valorEtapa) coincideEtapa = (item[etapaActiva] || "") === valorEtapa;
       return coincideBusqueda && coincideCat && coincideEtapa;
     });
-
     renderTabla(filtrados);
   }
 
-  // === EVENTOS ACTUALIZADOS ===
-  document.getElementById("buscador").addEventListener("input", () => {
-    filtrarTabla();
-    if (etapaActiva !== "todas") {
-      construirFiltroEtapa(etapaActiva);
-    }
-  });
-
-  document.getElementById("categoriaFiltro").addEventListener("change", () => {
-    filtrarTabla();
-    if (etapaActiva !== "todas") {
-      construirFiltroEtapa(etapaActiva);
-    }
-  });
-
+  document.getElementById("buscador").addEventListener("input", () => { filtrarTabla(); if (etapaActiva !== "todas") construirFiltroEtapa(etapaActiva); });
+  document.getElementById("categoriaFiltro").addEventListener("change", () => { filtrarTabla(); if (etapaActiva !== "todas") construirFiltroEtapa(etapaActiva); });
   document.getElementById("filtroEtapaValor").addEventListener("change", filtrarTabla);
 
-  function crearHandlerVista(vista) {
-    return () => {
-      document.querySelectorAll(".btn-view").forEach(btn => btn.classList.remove("active"));
-      document.getElementById(`btn${vista.charAt(0).toUpperCase() + vista.slice(1)}`).classList.add("active");
-      aplicarVista(vista);
-      filtrarTabla();
-    };
-  }
-
-  document.getElementById("btnTodas").addEventListener("click", crearHandlerVista("todas"));
-  document.getElementById("btnRecibido").addEventListener("click", crearHandlerVista("recibido"));
-  document.getElementById("btnPreparado").addEventListener("click", crearHandlerVista("preparado"));
-  document.getElementById("btnLinea").addEventListener("click", crearHandlerVista("linea"));
+  ["Todas", "Recibido", "Preparado", "Linea"].forEach(v => {
+      document.getElementById(`btn${v}`).addEventListener("click", () => {
+          document.querySelectorAll(".btn-view").forEach(b => b.classList.remove("active"));
+          document.getElementById(`btn${v}`).classList.add("active");
+          aplicarVista(v.toLowerCase());
+          filtrarTabla();
+      });
+  });
 
   renderTabla(datos);
   document.getElementById("btnTodas").click();
 
-  // === EXAMEN ===
+  // === EXAMEN (Lógica mejorada) ===
   function cargarListaSeleccion() {
     const cont = document.getElementById("seleccionProductos");
     cont.innerHTML = "";
     datos.forEach((item, i) => {
       const div = document.createElement("div");
       div.className = "producto-item";
-      div.innerHTML = `
-        <label>
-          <input type="checkbox" data-index="${i}"> 
-          ${item.prod} <small>(${item.cat})</small>
-        </label>
-      `;
+      div.innerHTML = `<label><input type="checkbox" data-index="${i}"> ${item.prod} <small>(${item.cat})</small></label>`;
       cont.appendChild(div);
     });
   }
 
+  // BOTÓN: Seleccionar Todo
+  document.getElementById("btnSeleccionarTodo").addEventListener("click", () => {
+    document.querySelectorAll("#seleccionProductos input").forEach(chk => chk.checked = true);
+  });
+
+  // BOTÓN: Limpiar
+  document.getElementById("btnDeseleccionarTodo").addEventListener("click", () => {
+    document.querySelectorAll("#seleccionProductos input").forEach(chk => chk.checked = false);
+  });
+
+  // BOTÓN: Selección al Azar
+  document.getElementById("btnAzar").addEventListener("click", () => {
+    const num = parseInt(document.getElementById("numAleatorios").value);
+    const checkboxes = Array.from(document.querySelectorAll("#seleccionProductos input"));
+    
+    if (isNaN(num) || num <= 0) {
+        alert("Ingresa un número válido de productos.");
+        return;
+    }
+    
+    // Desmarcar todo primero
+    checkboxes.forEach(c => c.checked = false);
+    
+    // Sortear índices
+    const barajados = checkboxes.sort(() => 0.5 - Math.random());
+    const seleccion = barajados.slice(0, num);
+    
+    seleccion.forEach(c => c.checked = true);
+    
+    if (num > checkboxes.length) alert("El número pedido es mayor al total de productos. Se seleccionaron todos.");
+  });
+
   function reiniciarExamen() {
     document.getElementById("formularioExamenManual").style.display = "none";
     document.getElementById("resultadoExamenManual").style.display = "none";
-    document.querySelectorAll("#seleccionProductos input[type='checkbox']").forEach(chk => chk.checked = false);
-    setTimeout(cargarListaSeleccion, 100);
     document.getElementById("nuevoExamenBtn").style.display = "none";
+    document.getElementById("generarExamenManual").style.display = "flex";
   }
 
   document.getElementById("nuevoExamenBtn").addEventListener("click", reiniciarExamen);
 
   document.getElementById("generarExamenManual").addEventListener("click", () => {
     const checks = document.querySelectorAll("#seleccionProductos input[type='checkbox']:checked");
-    if (checks.length === 0) {
-      alert("Por favor, selecciona al menos un producto.");
-      return;
-    }
+    if (checks.length === 0) { alert("Por favor, selecciona al menos un producto."); return; }
+    
     const seleccionados = Array.from(checks).map(chk => datos[parseInt(chk.dataset.index)]);
     let html = "";
     seleccionados.forEach((item, i) => {
       html += `
         <tr>
           <td><strong>${item.prod}</strong><br><small>${item.cat}</small></td>
-          <td><input type="text" name="recibido_${i}" data-real="${item.recibido}" placeholder="Ej: 7"><span class="emoji" id="emoji_r_${i}"></span></td>
-          <td><input type="text" name="preparado_${i}" data-real="${item.preparado}" placeholder="Ej: 7"><span class="emoji" id="emoji_p_${i}"></span></td>
-          <td><input type="text" name="linea_${i}" data-real="${item.linea}" placeholder="Ej: 1 o 11:59 p. m."><span class="emoji" id="emoji_l_${i}"></span></td>
-        </tr>
-      `;
+          <td><input type="text" name="r_${i}" data-real="${item.recibido}" placeholder="Recibido"><span class="emoji"></span></td>
+          <td><input type="text" name="p_${i}" data-real="${item.preparado}" placeholder="Prep."><span class="emoji"></span></td>
+          <td><input type="text" name="l_${i}" data-real="${item.linea}" placeholder="Línea"><span class="emoji"></span></td>
+        </tr>`;
     });
+    
     document.getElementById("cuerpoExamenManual").innerHTML = html;
     document.getElementById("formularioExamenManual").style.display = "block";
-    document.getElementById("resultadoExamenManual").style.display = "none";
-    document.getElementById("nuevoExamenBtn").style.display = "block";
+    document.getElementById("generarExamenManual").style.display = "none";
+    document.getElementById("nuevoExamenBtn").style.display = "flex";
+    window.scrollTo(0, document.getElementById("formularioExamenManual").offsetTop);
   });
 
-  // --- FUNCIONES DE NORMALIZACIÓN Y COMPARACIÓN CORREGIDAS ---
-
-  function normalizarTexto(texto) {
+  // Normalización para calificar
+  function normalizar(texto) {
     if (!texto) return "";
-    return texto
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function normalizarHora(texto) {
-    if (!texto) return "";
-    let t = texto.toLowerCase().trim();
-    t = t
-      .replace(/\s*\.\s*/g, "")   // elimina puntos con espacios: "p. m." → "pm"
-      .replace(/\s+/g, "")        // elimina todos los espacios: "11:59 pm" → "11:59pm"
-      .trim();
-    return t;
-  }
-
-  function respuestasEquivalentes(user, real) {
-    if (user === "" && real === "") return true;
-    if (user === "" || real === "") return false;
-
-    const userNorm = normalizarTexto(user);
-    const realNorm = normalizarTexto(real);
-
-    // Caso especial: si la respuesta correcta es una variante de "11:59 p. m."
-    if (real.includes("11:59") && 
-        (real.toLowerCase().includes("p.") || 
-         real.toLowerCase().includes("pm") || 
-         real.toLowerCase().includes("p m"))) {
-
-      const userHora = normalizarHora(user);
-      const realHora = normalizarHora(real);
-      return userHora === realHora;
-    }
-
-    // Caso especial: "segun empaque"
-    if (realNorm === "segun empaque") {
-      return userNorm === "segun empaque";
-    }
-
-    // Comparación normalizada estándar
-    return userNorm === realNorm;
+    return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s*\.\s*/g, "").replace(/\s+/g, "").trim();
   }
 
   document.getElementById("calificarExamenManual").addEventListener("click", () => {
     const inputs = document.querySelectorAll("#cuerpoExamenManual input");
     let total = 0, correctos = 0, errores = [];
+    
     inputs.forEach(input => {
       const user = input.value.trim();
       const real = input.dataset.real || "";
       total++;
-      const esCorrecto = respuestasEquivalentes(user, real);
+      
+      const esCorrecto = normalizar(user) === normalizar(real);
       const emojiSpan = input.nextElementSibling;
+      
       if (esCorrecto) {
         correctos++;
         emojiSpan.textContent = "✅";
-        emojiSpan.className = "emoji correcto";
       } else {
         emojiSpan.textContent = "❌";
-        emojiSpan.className = "emoji incorrecto";
         const row = input.closest("tr");
-        const producto = row.querySelector("strong").textContent;
-        const cat = row.querySelector("small").textContent;
-        const colIndex = input.closest("td").cellIndex;
-        const colName = colIndex === 1 ? "Recibido" : colIndex === 2 ? "Preparado" : "Línea";
-        errores.push({ producto, cat, colName, user, real });
+        const prod = row.querySelector("strong").textContent;
+        const col = input.placeholder;
+        errores.push({ prod, col, user, real });
       }
     });
+
     const resDiv = document.getElementById("resultadoExamenManual");
-    let msg = `<h3>Resultado del examen</h3><p><strong>${correctos}</strong> de <strong>${total}</strong> celdas correctas.</p>`;
+    let msg = `<h3>Resultado: ${correctos}/${total}</h3>`;
     if (errores.length > 0) {
-      msg += `<h4>Correcciones detalladas:</h4>`;
-      errores.forEach(e => {
-        msg += `<div class="correccion incorrecta"><strong>${e.producto}</strong> (${e.cat}) - ${e.colName}: <span style="color:#888">Respondiste: "${e.user || '(vacío)'}"</span> → <span style="color:#f44336">Correcto: "${e.real || '(vacío)'}"</span></div>`;
-      });
-    } else {
-      msg += `<div class="correccion correcta">¡Excelente! Todas tus respuestas son correctas.</div>`;
-    }
+        errores.forEach(e => {
+            msg += `<div class="correccion incorrecta"><strong>${e.prod}</strong> (${e.col}): Tu: "${e.user || '(vacío)'}" → Correcto: "${e.real}"</div>`;
+        });
+    } else { msg += `<div class="correccion correcta">¡Perfecto!</div>`; }
+    
     resDiv.innerHTML = msg;
     resDiv.style.display = "block";
+    resDiv.scrollIntoView();
   });
 
-  document.querySelector('.tab[data-tab="examen"]').addEventListener('click', () => {
-    setTimeout(cargarListaSeleccion, 100);
-  });
-  if (document.getElementById("examen").classList.contains("active")) {
-    cargarListaSeleccion();
-  }
+  document.querySelector('.tab[data-tab="examen"]').addEventListener('click', () => { setTimeout(cargarListaSeleccion, 100); });
+  if (document.getElementById("examen").classList.contains("active")) cargarListaSeleccion();
 </script>
 
 </body>
